@@ -8,6 +8,7 @@ If "Smart Merge" is not checked, then identical records are merged (i.e. de-dupe
 If "Smart Merge" is checked, then records with the same callsign are combined. So, for example, if G2ABC has been logged in square IO91RF and later in square IO92MA, then only the IO92MA record is retained. However, if the earlier record contained an exchange but the later record did not, then the earlier exchange is retained. So, for example, if the following two records are combined...
 
 G2ABC, IO91RF, GF
+
 G2ABC, IO92MA, <blank>
 
 ...then the merged output will be...
