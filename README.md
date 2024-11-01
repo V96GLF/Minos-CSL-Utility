@@ -1,4 +1,6 @@
 # Minos-CSL-Utility
+# Version 0.5
+
 A utility to combine CSL, ADIF, EDI and Minos files into a new CSL file.
 
 This python utility creates a Minos Archive .csl file, based on the input of one or more files with any mix of type CSL, ADI, ADIF, EDI or Minos.
@@ -16,6 +18,8 @@ G2ABC, IO92MA, <blank>
 G2ABC, IO92MA, GF
 
 Callsigns are only considered identical if they match fully. Hence G2ABC, GW2ABC and G2ABC/P are treated as different callsigns.
+
+Records that contain a callsign only (i.e. no locator, exchange or comment) are ignored.
 
 Merging happens in the order of adding the files. Therefore, add the oldest file first.
 

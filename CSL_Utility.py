@@ -12,6 +12,9 @@ import logging
 import platform
 import datetime
 
+# Version information
+VERSION = "0.5"
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -33,6 +36,10 @@ class ContestRecord:
         if not data:
             raise ValueError("Cannot create ContestRecord from empty data")
         return cls(*data) if len(data) >= 4 else cls(data[0], *([""] * (4 - len(data))))
+
+    def has_more_than_callsign(self) -> bool:
+        """Return True if record has any data beyond the callsign."""
+        return bool(self.locator.strip() or self.exchange.strip() or self.comment.strip())
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, ContestRecord):
@@ -267,7 +274,7 @@ class ContestLogManager:
 
     def add_or_merge_record(self, new_record: ContestRecord) -> None:
         """Add new record or merge with existing one."""
-        if not new_record.callsign:
+        if not new_record.callsign or not new_record.has_more_than_callsign():
             return
 
         if self.smart_merge:
@@ -322,7 +329,7 @@ class ContestLogUI:
     def setup_ui(self):
         self.window = Tk()
         self.window.geometry("500x600")
-        self.window.title("Minos CSL Utility by G4CTP")
+        self.window.title(f"Minos CSL Utility v{VERSION} by G4CTP")
         
         # Configure styles
         style = ttk.Style()
@@ -445,7 +452,7 @@ class ContestLogUI:
         self.update_save_button_state()
         
         # Add initial status message
-        self.update_status("Ready")
+        self.update_status(f"Minos CSL Utility v{VERSION} ready")
 
     def update_status(self, message: str):
         """Update status with clean messages and auto-scroll."""
