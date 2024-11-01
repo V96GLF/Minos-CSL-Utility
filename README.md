@@ -25,5 +25,3 @@ Merging happens in the order of adding the files. Therefore, add the oldest file
 
 Author: Russell Whitworth G4CTP russell_whitworth@hotmail.com
 (with a lot of help from Claude.AI)
-
-Version 0.4 initial release
