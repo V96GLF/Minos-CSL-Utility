@@ -52,7 +52,7 @@ class ContestRecord:
 class ContestLogManager:
     """Manages contest log records and file operations."""
     
-    HEADER = "# <Callsign>, <Locator>, <Exchange>, <Comment>"
+    HEADER = f"# Minos CSL Utility by G4CTP v{VERSION}\n# <Callsign>, <Locator>, <Exchange>, <Comment>"
     SUPPORTED_FORMATS = {'.csl', '.edi', '.adi', '.adif', '.minos'}
 
     def __init__(self):
