@@ -1,25 +1,21 @@
 # Minos-CSL-Utility
-# Version 0.5
+# Version 0.6
 
 A utility to combine CSL, ADIF, EDI and Minos files into a new CSL file.
 
 This python utility creates a Minos Archive .csl file, based on the input of one or more files with any mix of type CSL, ADI, ADIF, EDI or Minos.
 
-If "Smart Merge" is not checked, then identical records are merged (i.e. de-duped), but if there is a difference in any field then multiple records are created. So, for example, if G2ABC has been logged in square IO91 and IO92, then both records are retained.
+From version 0.6 there are three methods of adding data, selected under "Merge Options":
 
-If "Smart Merge" is checked, then records with the same callsign are combined. So, for example, if G2ABC has been logged in square IO91RF and later in square IO92MA, then only the IO92MA record is retained. However, if the earlier record contained an exchange but the later record did not, then the earlier exchange is retained. So, for example, if the following two records are combined...
+"Keep all records" does exactly what it says, except that identical records are ignored. If the same callsign has given a different locator, then both records will be retained.
 
-G2ABC, IO91RF, GF
+"Keep most recent" - if the callsign matches, then the most recent record is kept, overwriting previous records. For example, if the same callsign has changed locator, then the most recent locator is kept and the older locator is deleted.
 
-G2ABC, IO92MA, <blank>
-
-...then the merged output will be...
-
-G2ABC, IO92MA, GF
+"Smart Merge" combines records that have identical callsign, using the most recent data to overwrite older data. But if the newer record has a blank field, then the data from the older record is retained. For example, if a station's locator has changed, then the new locator will be retained - but if the operator's name was in the comments field of the older record and the newer record has a blank comment field, then the name from the older record will be retained.
 
 Callsigns are only considered identical if they match fully. Hence G2ABC, GW2ABC and G2ABC/P are treated as different callsigns.
 
-Records that contain a callsign only (i.e. no locator, exchange or comment) are ignored.
+Records that contain a callsign only (i.e. no locator, exchange or comment) can be removed, if the "Remove callsign-only records" box is checked.
 
 Merging happens in the order of adding the files. Therefore, add the oldest file first.
 

@@ -11,9 +11,15 @@ from pathlib import Path
 import logging
 import platform
 import datetime
+from enum import Enum
 
 # Version information
-VERSION = "0.5"
+VERSION = "0.6"
+
+class MergeMode(Enum):
+    KEEP_ALL = "Keep all records"
+    KEEP_RECENT = "Keep most recent"
+    SMART_MERGE = "Smart merge"
 
 # Set up logging
 logging.basicConfig(
@@ -49,6 +55,13 @@ class ContestRecord:
                 self.exchange.strip() == other.exchange.strip() and 
                 self.comment.strip() == other.comment.strip())
 
+from enum import Enum
+
+class MergeMode(Enum):
+    KEEP_ALL = "Keep all records"
+    KEEP_RECENT = "Keep most recent"
+    SMART_MERGE = "Smart merge"
+
 class ContestLogManager:
     """Manages contest log records and file operations."""
     
@@ -58,7 +71,8 @@ class ContestLogManager:
     def __init__(self):
         self.records: List[ContestRecord] = []
         self.current_file: Path = Path()
-        self.smart_merge: bool = False
+        self.merge_mode: MergeMode = MergeMode.KEEP_ALL
+        self.remove_callsign_only: bool = False  # New flag
         self._observers: List[callable] = []
         self.has_unsaved_changes: bool = False
 
@@ -74,7 +88,7 @@ class ContestLogManager:
             
         try:
             initial_count = len(self.records)
-            logging.info(f"Starting load with {initial_count} records. Smart merge is {self.smart_merge}")
+            logging.info(f"Starting load with {initial_count} records. Merge mode is {self.merge_mode.value}")
             
             if extension == '.csl':
                 self.load_csl(filepath)
@@ -95,21 +109,6 @@ class ContestLogManager:
         except Exception as e:
             logging.error(f"Failed to load {extension} file: {str(e)}")
             raise IOError(f"Failed to load {extension} file: {str(e)}")
-
-    def load_csl(self, filename: str) -> None:
-        """Load CSL format file."""
-        with open(filename, "r", encoding='utf-8') as f:
-            reader = csv.reader(f)
-            first_line = next(reader, None)
-            
-            if first_line and not first_line[0].startswith('#'):
-                self.add_or_merge_record(ContestRecord.from_list(
-                    [field.strip() for field in first_line]))
-            
-            for row in reader:
-                if row:  # Skip empty rows
-                    self.add_or_merge_record(ContestRecord.from_list(
-                        [field.strip() for field in row]))
 
     def load_edi(self, filename: str) -> None:
         """Load EDI format file."""
@@ -260,6 +259,21 @@ class ContestLogManager:
                             self.add_or_merge_record(record)
                             qso_count += 1
 
+    def load_csl(self, filename: str) -> None:
+        """Load CSL format file."""
+        with open(filename, "r", encoding='utf-8') as f:
+            reader = csv.reader(f)
+            first_line = next(reader, None)
+            
+            if first_line and not first_line[0].startswith('#'):
+                self.add_or_merge_record(ContestRecord.from_list(
+                    [field.strip() for field in first_line]))
+            
+            for row in reader:
+                if row:  # Skip empty rows
+                    self.add_or_merge_record(ContestRecord.from_list(
+                        [field.strip() for field in row]))
+
     def save_csl(self, filename: str) -> None:
         """Save to CSL format with error handling."""
         try:
@@ -272,13 +286,37 @@ class ContestLogManager:
         except Exception as e:
             raise IOError(f"Failed to save file: {str(e)}")
 
+    def set_merge_mode(self, mode: MergeMode):
+        """Set the merge mode."""
+        self.merge_mode = mode
+        logging.info(f"Merge mode set to {mode.value}")
+
+    def set_remove_callsign_only(self, value: bool):
+        """Set whether to remove callsign-only records."""
+        self.remove_callsign_only = value
+        logging.info(f"Remove callsign-only records set to {value}")
+
     def add_or_merge_record(self, new_record: ContestRecord) -> None:
-        """Add new record or merge with existing one."""
-        if not new_record.callsign or not new_record.has_more_than_callsign():
+        """Add new record or merge with existing one based on merge mode."""
+        if not new_record.callsign:
+            return
+            
+        # Only check for more than callsign if the flag is set
+        if self.remove_callsign_only and not new_record.has_more_than_callsign():
             return
 
-        if self.smart_merge:
-            existing_records = [r for r in self.records if r.callsign.upper() == new_record.callsign.upper()]
+        existing_records = [r for r in self.records if r.callsign.upper() == new_record.callsign.upper()]
+
+        if self.merge_mode == MergeMode.KEEP_ALL:
+            if new_record not in self.records:
+                self.records.append(new_record)
+                
+        elif self.merge_mode == MergeMode.KEEP_RECENT:
+            if existing_records:
+                self.records.remove(existing_records[0])
+            self.records.append(new_record)
+            
+        elif self.merge_mode == MergeMode.SMART_MERGE:
             if existing_records:
                 existing_record = existing_records[0]
                 merged_record = ContestRecord(
@@ -290,17 +328,9 @@ class ContestLogManager:
                 self.records[self.records.index(existing_record)] = merged_record
             else:
                 self.records.append(new_record)
-        else:
-            if new_record not in self.records:
-                self.records.append(new_record)
         
         self.has_unsaved_changes = True
         self.notify_observers()
-
-    def set_smart_merge(self, value: bool):
-        """Set whether to use smart merge or overwrite."""
-        self.smart_merge = value
-        logging.info(f"Smart merge set to {value}")
 
     def add_observer(self, callback: callable):
         """Add observer for record changes."""
@@ -317,12 +347,12 @@ class ContestLogManager:
             self.has_unsaved_changes = True
         self.records = []
         self.notify_observers()
-
+        
 class ContestLogUI:
     def __init__(self):
         self.system = platform.system()
         self.manager = ContestLogManager()
-        self.status_messages = []  # Initialize status messages list
+        self.status_messages = []
         self.setup_ui()
         self.manager.add_observer(self.update_display)
 
@@ -344,17 +374,34 @@ class ContestLogUI:
         top_section = ttk.Frame(main_frame)
         top_section.pack(fill=X, pady=(0, 10))
 
-        # Smart merge frame
-        merge_frame = ttk.LabelFrame(top_section, text="Options", padding="5")
-        merge_frame.pack(fill=X, pady=(0, 10))
+        # Options frame
+        options_frame = ttk.LabelFrame(top_section, text="Options", padding="5")
+        options_frame.pack(fill=X, pady=(0, 10))
 
-        self.smart_merge_var = BooleanVar(value=False)
+        # Merge options
+        self.merge_mode_var = StringVar(value=MergeMode.KEEP_ALL.value)
+        
+        for mode in MergeMode:
+            ttk.Radiobutton(
+                options_frame,
+                text=mode.value,
+                variable=self.merge_mode_var,
+                value=mode.value,
+                command=self.update_merge_mode
+            ).pack(anchor=W)
+
+        # Add separator between merge options and checkbox
+        ttk.Separator(options_frame, orient='horizontal').pack(fill=X, pady=5)
+
+        # Add checkbox for callsign-only removal
+        self.remove_callsign_var = BooleanVar(value=False)
         ttk.Checkbutton(
-            merge_frame,
-            text="Smart Merge",
-            variable=self.smart_merge_var,
-            command=self.update_smart_merge
+            options_frame,
+            text="Remove callsign-only records",
+            variable=self.remove_callsign_var,
+            command=self.update_remove_callsign
         ).pack(anchor=W)
+
 
         # Buttons frame
         button_frame = ttk.LabelFrame(top_section, text="File Operations", padding="5")
@@ -453,6 +500,18 @@ class ContestLogUI:
         
         # Add initial status message
         self.update_status(f"Minos CSL Utility v{VERSION} ready")
+
+    def update_merge_mode(self):
+        """Update merge mode setting in manager."""
+        selected_mode = next(mode for mode in MergeMode if mode.value == self.merge_mode_var.get())
+        self.manager.set_merge_mode(selected_mode)
+        self.update_status(f"Merge mode set to: {selected_mode.value}")
+
+    def update_remove_callsign(self):
+        """Update remove callsign-only setting in manager."""
+        value = self.remove_callsign_var.get()
+        self.manager.set_remove_callsign_only(value)
+        self.update_status(f"Remove callsign-only records: {'enabled' if value else 'disabled'}")
 
     def update_status(self, message: str):
         """Update status with clean messages and auto-scroll."""
