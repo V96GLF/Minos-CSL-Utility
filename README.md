@@ -31,22 +31,22 @@ Windows requires Python 3.x, which can be downloaded from python.org or via the 
 
 ## Ubuntu and Raspberry Pi
 Ubuntu and Raspberry Pi should have python3 installed by default. If not, run the following:
-sudo apt update
-sudo apt install python3
+    sudo apt update
+    sudo apt install python3
 
 ...and also...
-sudo apt install python3-tk
+    sudo apt install python3-tk
 
 The utility can then be run with the following commands:
-cd /path/to/the/utility
-python3 CSL_Utility.py
+    cd /path/to/the/utility
+    python3 CSL_Utility.py
 
 ## MacOS
 For MacOS, install Python from python.org. This includes all necessary dependencies. 
 
 The utility can then be run with the following commands:
-cd /path/to/the/utility
-python3 CSL_Utility.py
+    cd /path/to/the/utility
+    python3 CSL_Utility.py
 
 Author: Russell Whitworth G4CTP russell_whitworth@hotmail.com
 (with a lot of help from Claude.AI)
